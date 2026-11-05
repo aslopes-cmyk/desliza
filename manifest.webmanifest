@@ -1,11 +1,25 @@
 {
-  "name": "Desliza",
+  "id": "/",
+  "name": "Desliza · quebra-cabeça de blocos deslizantes",
   "short_name": "Desliza",
-  "description": "Quebra-cabeça de blocos deslizantes com 500 níveis.",
-  "start_url": "./",
+  "description": "Deslize as peças e leve o bloco laranja até a saída. 400 fases em 4 dificuldades.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#14161b",
+  "background_color": "#1d2027",
   "theme_color": "#14161b",
-  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+  "categories": ["games", "entertainment"],
+  "icons": [
+    { "src": "/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "screenshots": [
+    { "src": "/img/screenshot-home.png", "sizes": "780x1688", "type": "image/png", "form_factor": "narrow", "label": "Tela inicial com escolha de dificuldade e modo" },
+    { "src": "/img/screenshot-game.png", "sizes": "780x1688", "type": "image/png", "form_factor": "narrow", "label": "Fase em andamento com o visor de pontos" }
+  ]
 }

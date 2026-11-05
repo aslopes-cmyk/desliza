@@ -1,0 +1,84 @@
+<!doctype html>
+<!-- Arte da imagem de compartilhamento: abra num navegador em 1200x630 e salve uma captura como img/og-image.jpg -->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --big: #ff7a1a; --big-hi: #ffb067; --big-lo: #c04f00;
+    --dom: #14ad9e; --dom-hi: #5fe3d3; --dom-lo: #0a6d63;
+    --sml: #8e6ff0; --sml-hi: #c3b0ff; --sml-lo: #5a3fbd;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    width: 1200px; height: 630px; overflow: hidden;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: #e9edf3;
+    background:
+      radial-gradient(60% 80% at 78% 50%, #ff7a1a2e, transparent 70%),
+      radial-gradient(50% 60% at 10% 0%, #14ad9e22, transparent 70%),
+      linear-gradient(160deg, #1f232b, #0e1014);
+    display: flex; align-items: center;
+    padding: 0 80px;
+    gap: 70px;
+  }
+  .left { flex: 1; }
+  .title { display: flex; gap: 12px; margin: 0 0 26px; }
+  .title span {
+    width: 78px; height: 86px; display: grid; place-items: center;
+    font-size: 56px; font-weight: 900; line-height: 1; color: #fff; text-shadow: 0 3px 0 #0004;
+    border-radius: 16px;
+    box-shadow: inset 0 3px 0 #ffffff55, inset 0 -6px 0 #0003, 0 8px 18px #0009;
+  }
+  .d { background: linear-gradient(145deg, var(--dom-hi), var(--dom) 40%, var(--dom-lo)); }
+  .v { background: linear-gradient(145deg, var(--sml-hi), var(--sml) 40%, var(--sml-lo)); }
+  .b { background: linear-gradient(145deg, var(--big-hi), var(--big) 40%, var(--big-lo)); transform: translateY(10px); }
+  h2 { margin: 0 0 30px; font-size: 40px; line-height: 1.15; font-weight: 800; letter-spacing: -.01em; }
+  h2 em { font-style: normal; color: var(--big); }
+  .chips { display: flex; gap: 12px; flex-wrap: wrap; }
+  .chips span { font-size: 22px; font-weight: 600; padding: 10px 18px; border-radius: 99px; background: #ffffff12; color: #c9d0db; box-shadow: inset 0 0 0 1px #ffffff14; }
+  .chips span b { color: #fff; }
+
+  .device {
+    flex: none;
+    padding: 22px;
+    border-radius: 34px;
+    background: linear-gradient(180deg, #2b2f38, #1d2027 20%, #15181e);
+    box-shadow: 0 0 0 3px #000, 0 0 0 8px #2a2e36, 0 30px 60px #000c;
+    transform: rotate(4deg);
+  }
+  .frame { position: relative; padding: 12px; border-radius: 20px; background: linear-gradient(180deg, #0a0b0e, #15181e); box-shadow: inset 0 3px 12px #000c; }
+  .board { position: relative; width: 320px; height: 400px; border-radius: 10px; background: #0d0f13; }
+  .exit { position: absolute; left: 92px; width: 160px; bottom: 0; height: 12px; background: #0d0f13; box-shadow: 0 3px 0 -1px var(--big); border-radius: 0 0 4px 4px; }
+  .p { position: absolute; border-radius: 13px; box-shadow: inset 0 2px 0 #ffffff55, inset 0 -4px 0 #0003, 0 3px 6px #0009; }
+  .p.B::after { content: ""; position: absolute; inset: 26%; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='5'%3E%3Cpath d='M8 9l12 10 12-10' stroke-opacity='.4'/%3E%3Cpath d='M8 21l12 10 12-10' stroke-opacity='.75'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat; }
+  .p.V::after, .p.H::after { content: ""; position: absolute; border-radius: 99px; background: #0003; }
+  .p.V::after { left: 44%; right: 44%; top: 20%; bottom: 20%; }
+  .p.H::after { top: 44%; bottom: 44%; left: 20%; right: 20%; }
+  .p.S::after { content: ""; position: absolute; inset: 30%; border-radius: 50%; box-shadow: inset 0 0 0 4px #ffffff40; }
+</style>
+</head>
+<body>
+  <div class="left">
+    <h1 class="title"><span class="d">D</span><span class="v">E</span><span class="d">S</span><span class="v">L</span><span class="d">I</span><span class="v">Z</span><span class="b">A</span></h1>
+    <h2>Deslize as peças e leve<br>o <em>bloco laranja</em> até a saída.</h2>
+    <div class="chips"><span><b>400</b> fases</span><span><b>4</b> dificuldades</span><span>Grátis no navegador</span></div>
+  </div>
+  <div class="device"><div class="frame"><div class="board" id="board"></div><div class="exit"></div></div></div>
+
+  <script src="../js/solver.js"></script>
+  <script>
+    // a fase mais difícil do jogo (Ultra 100, 138 movimentos)
+    const state = 'SSSVBBVVBBVVSHHV..HH';
+    const cell = 80, gap = 3;
+    const cls = { B: 'B b', V: 'V d', H: 'H d', S: 'S v' };
+    for (const p of Solver.parse(state)) {
+      const el = document.createElement('div');
+      el.className = 'p ' + cls[p.t];
+      Object.assign(el.style, { left: p.c * cell + gap + 'px', top: p.r * cell + gap + 'px', width: p.w * cell - gap * 2 + 'px', height: p.h * cell - gap * 2 + 'px' });
+      document.getElementById('board').appendChild(el);
+    }
+  </script>
+</body>
+</html>
