@@ -8,12 +8,10 @@
   const tierOf = (i) => TIERS.findIndex((t) => i >= t.from && i < t.from + t.count);
   const numInTier = (i) => i - TIERS[tierOf(i)].from + 1;
   const levelName = (i) => `${TIERS[tierOf(i)].name} ${numInTier(i)}`;
-  const MODES = {
-    free: { name: 'Livre', lcd: 'LIVRE', desc: 'sem tempo' },
-    learn: { name: 'Aprender', lcd: 'APRENDER', desc: 'passo a passo' },
-    challenge: { name: 'Desafio', lcd: 'DESAFIO', desc: 'contra o relógio' },
-  };
-  const GRADES = [['S', 0.5, 'Super'], ['A', 0.65, 'Elite'], ['B', 0.8, 'Mestre'], ['C', 0.9, 'Intermediário'], ['D', 1, 'Iniciante']];
+  const I = window.I18N;
+  let T = I.s; // textos do idioma atual
+  let MODES = { free: {}, learn: {}, challenge: {} }; // nomes preenchidos por applyLang()
+  const GRADES = [['S', 0.5], ['A', 0.65], ['B', 0.8], ['C', 0.9], ['D', 1]];
 
   const $ = (s) => document.querySelector(s);
   const boardEl = $('#board'), areaEl = $('#boardArea'), frameEl = $('#frame');
@@ -27,6 +25,16 @@
   try { save = Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(STORE) || '{}')); } catch (e) { save = Object.assign({}, DEFAULTS); }
   const persist = () => { try { localStorage.setItem(STORE, JSON.stringify(save)); } catch (e) { /* armazenamento indisponível */ } };
   Sfx.enabled = save.sound;
+
+  // ---------------- idioma ----------------
+  function applyLang() {
+    I.set(save.lang);
+    T = I.s;
+    MODES = T.modes;
+    TIERS.forEach((t, k) => Object.assign(t, T.tiers[k]));
+    I.applyStatic();
+  }
+  applyLang();
 
   // ---------------- peças (sempre as mesmas 10, como no aparelho) ----------------
   const pieces = ['B', 'D', 'D', 'D', 'D', 'D', 'S', 'S', 'S', 'S'].map((k, i) => {
@@ -46,11 +54,14 @@
   boardEl.appendChild(ghostEl);
 
   let cell = 64, gap = 3;
+  let startPieces = null;
 
   function layout() {
     const wall = Math.max(8, Math.round(Math.min(areaEl.clientWidth, areaEl.clientHeight * 0.8) * 0.03));
     const availW = areaEl.clientWidth - wall * 2;
-    const availH = areaEl.clientHeight - wall * 2;
+    const st = areaEl.querySelector('.status');
+    const stH = st && st.offsetHeight ? st.offsetHeight + 10 : 0;
+    const availH = areaEl.clientHeight - stH - wall * 2;
     cell = Math.max(36, Math.floor(Math.min(availW / 4, availH / 5)));
     gap = Math.max(2, Math.round(cell * 0.035));
     const root = document.documentElement.style;
@@ -113,7 +124,7 @@
     save.level = levelIdx;
     save.tierPos = save.tierPos || {};
     save.tierPos[tierOf(levelIdx)] = levelIdx;
-    if (opts.announce !== false && tierOf(levelIdx) !== prevTier && booted) toast('Dificuldade: ' + TIERS[tierOf(levelIdx)].name);
+    if (opts.announce !== false && tierOf(levelIdx) !== prevTier && booted) toast(T.toastDiff(TIERS[tierOf(levelIdx)].name));
     persist();
     const target = parse(LEVELS[levelIdx][0]);
     const groups = { B: [], D: [], S: [] };
@@ -128,6 +139,16 @@
       }
     }
     boardEl.classList.remove('won', 'failed', 'locked');
+    frameEl.classList.remove('exiting');
+    // se o bloco grande saiu pela abertura, ele reaparece no lugar novo em vez de voltar voando
+    if (big.el.classList.contains('escape')) {
+      big.el.classList.remove('escape', 'celebrate');
+      big.el.style.transition = 'none';
+      big.el.style.opacity = '0';
+      place(big, false);
+      void big.el.offsetWidth;
+      big.el.style.transition = '';
+    }
     pieces.forEach((p, i) => {
       p.el.classList.remove('escape', 'dragging', 'hinted');
       p.el.style.opacity = '';
@@ -209,7 +230,7 @@
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   async function autoStep() {
     if (busy || status === 'won' || status === 'failed') return;
-    if (!analyzer || !analyzer.done) { toast('Calculando solução…'); return; }
+    if (!analyzer || !analyzer.done) { toast(T.toastSolving); return; }
     const h = hint || computeHint();
     if (!h) return;
     busy = true;
@@ -313,7 +334,7 @@
   function gradeFor(t) {
     const f = t / timeLimit;
     for (const g of GRADES) if (f <= g[1]) return g;
-    return ['E', Infinity, 'Falhou'];
+    return ['E', Infinity];
   }
 
   function win() {
@@ -323,11 +344,17 @@
     boardEl.classList.add('won', 'locked');
     Sfx.win();
     if (save.haptics && navigator.vibrate) navigator.vibrate([20, 40, 20, 40, 60]);
-    // o bloco grande "escapa" pela abertura
+    // o bloco grande pulsa, a saída acende e ele desce pela abertura
+    const wonIdx = levelIdx;
+    frameEl.classList.add('exiting');
+    big.el.classList.add('celebrate');
     setTimeout(() => {
+      if (status !== 'won' || levelIdx !== wonIdx) return;
+      big.el.classList.remove('celebrate');
       big.el.classList.add('escape');
-      big.el.style.transform = `translate(${big.c * cell + gap}px, ${(big.r + 2.6) * cell}px)`;
-    }, 120);
+      const wall = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--wall')) || 12;
+      big.el.style.transform = `translate(${big.c * cell + gap}px, ${5 * cell + wall + 8}px)`;
+    }, 520);
 
     const opt = optimal();
     const grade = mode === 'challenge' ? gradeFor(tElapsed) : null;
@@ -344,12 +371,21 @@
     }
     lcdMsg = {
       lines: [
-        ['RESOLVIDO!', window.Display.COLOR.good],
-        [grade ? 'NOTA ' + grade[0] : moves <= opt ? 'PERFEITO' : 'MIN ' + opt],
+        [T.lcdSolved, window.Display.COLOR.good],
+        [grade ? T.lcdGrade + ' ' + grade[0] : moves <= opt ? T.lcdPerfect : T.lcdMin + ' ' + opt],
         ['M' + String(moves).padStart(3, '0') + ' ' + fmt(tElapsed)],
       ],
     };
-    setTimeout(() => showResult({ won: true, grade, opt, record }), 900);
+    if (mode === 'challenge') {
+      setTimeout(() => showResult({ won: true, grade, opt, record }), 1400);
+    } else {
+      // Livre e Aprender: depois da saída, a próxima fase se monta sozinha
+      const msg = mode === 'learn' ? T.winLearn
+        : moves <= opt ? T.winPerfect(moves)
+        : T.winDone(moves, opt, record);
+      setTimeout(() => { if (status === 'won' && levelIdx === wonIdx) toast(msg); }, 1250);
+      setTimeout(() => { if (status === 'won' && levelIdx === wonIdx) loadLevel(levelIdx + 1); }, 2300);
+    }
   }
 
   function fail() {
@@ -359,8 +395,8 @@
     boardEl.classList.add('failed', 'locked');
     Sfx.fail();
     if (save.haptics && navigator.vibrate) navigator.vibrate([80, 60, 80]);
-    lcdMsg = { lines: [['TEMPO!', window.Display.COLOR.warn], ['NOTA E', window.Display.COLOR.warn], ['M' + String(moves).padStart(3, '0')]] };
-    setTimeout(() => showResult({ won: false, grade: ['E', 0, 'Falhou'], opt: optimal() }), 700);
+    lcdMsg = { lines: [[T.lcdTime, window.Display.COLOR.warn], [T.lcdGrade + ' E', window.Display.COLOR.warn], ['M' + String(moves).padStart(3, '0')]] };
+    setTimeout(() => showResult({ won: false, grade: ['E', 0], opt: optimal() }), 700);
   }
 
   // ---------------- modos ----------------
@@ -379,15 +415,15 @@
       clearHint();
       if (m === 'challenge' || was === 'challenge' || status === 'won' || status === 'failed') loadLevel(levelIdx);
     }
-    if (!opts.silent) toast('Modo ' + MODES[m].name);
+    if (!opts.silent) toast(T.toastMode(MODES[m].name));
     updateTip();
   }
 
   function updateTip() {
     const t = $('#tip');
-    if (mode === 'learn') t.textContent = '▶ executa o próximo passo · ◀ volta';
-    else if (mode === 'challenge') t.textContent = `Limite: ${fmt(timeLimit)} · nota S a E`;
-    else t.textContent = `${levelName(levelIdx)} · mínimo de ${optimal()} movimentos`;
+    if (mode === 'learn') t.textContent = T.tipLearn;
+    else if (mode === 'challenge') t.textContent = T.tipChallenge(fmt(timeLimit));
+    else t.textContent = T.tipFree(levelName(levelIdx), optimal());
   }
 
   // ---------------- teclas físicas (toque / segurar) ----------------
@@ -440,7 +476,7 @@
     tap: () => (mode === 'learn' ? autoStep() : loadLevel(levelIdx + 1)),
     hold: () => setMode(mode === 'challenge' ? 'free' : 'challenge'),
   });
-  bindKey('kUndo', { tap: undo, hold: () => { restart(); toast('Reiniciado'); } });
+  bindKey('kUndo', { tap: undo, hold: () => { restart(); toast(T.toastRestart); } });
   bindKey('kMenu', { tap: openMenu });
   $('#screen').addEventListener('click', () => { Sfx.unlock(); openLevels(); });
   $('#mute').addEventListener('click', () => { Sfx.unlock(); toggleSound(); });
@@ -450,7 +486,7 @@
     persist();
     $('#mute').classList.toggle('off', !save.sound);
     $('#hSound').classList.toggle('off', !save.sound);
-    toast(save.sound ? 'Som ligado' : 'Som desligado');
+    toast(save.sound ? T.toastSoundOn : T.toastSoundOff);
   }
   $('#mute').classList.toggle('off', !save.sound);
 
@@ -473,9 +509,13 @@
 
   // ---------------- folhas: menu, níveis, ajuda, resultado ----------------
   const sheet = $('#sheet'), sheetBody = $('#sheetBody'), backdrop = $('#backdrop');
-  let onSheetClose = null;
+  let onSheetClose = null, sheetOpenedAt = 0;
+  // no celular, o toque que abre a folha gera um "click" sintético logo depois;
+  // ele cairia no fundo escuro e fecharia a folha na hora. Ignora cliques recentes.
+  const ghostClick = () => performance.now() - sheetOpenedAt < 450;
   function openSheet(html, onClose) {
     sheetBody.innerHTML = html;
+    sheetOpenedAt = performance.now();
     sheet.hidden = backdrop.hidden = false;
     sheetBody.scrollTop = 0;
     onSheetClose = onClose || null;
@@ -487,8 +527,9 @@
     onSheetClose = null;
     if (cb) cb();
   }
-  backdrop.addEventListener('click', closeSheet);
+  backdrop.addEventListener('click', () => { if (!ghostClick()) closeSheet(); });
   sheetBody.addEventListener('click', (e) => {
+    if (ghostClick()) return;
     const b = e.target.closest('[data-act]');
     if (!b) return;
     Sfx.key();
@@ -505,14 +546,22 @@
     home: () => { onSheetClose = null; closeSheet(); showHome(); },
     about: () => openAbout(),
     tier: (t) => openLevels(+t),
-    diff: (t) => { onSheetClose = null; closeSheet(); selectTier(+t); toast('Dificuldade: ' + TIERS[+t].name); },
+    diff: (t) => { onSheetClose = null; closeSheet(); selectTier(+t); toast(T.toastDiff(TIERS[+t].name)); },
+    lang: () => openLang(),
+    mail: () => {
+      // endereço montado só no clique, para não ficar legível no código da página
+      const to = ['4slop3s', 'gmail.com'].join('@');
+      const info = `v1.0 · ${I.lang} · ${levelName(levelIdx)}`;
+      location.href = `mailto:${to}?subject=${encodeURIComponent(T.mailSubject)}&body=${encodeURIComponent(T.mailBody(info))}`;
+    },
+    setlang: (l) => { setLang(l); openMenu(); },
     next: () => { onSheetClose = null; closeSheet(); loadLevel(levelIdx + 1); },
     retry: () => { onSheetClose = null; closeSheet(); loadLevel(levelIdx); },
     learn: () => { onSheetClose = null; closeSheet(); loadLevel(levelIdx); setMode('learn'); },
     haptics: () => { save.haptics = !save.haptics; persist(); openMenu(); },
     reset: () => {
-      if (!confirm('Apagar todo o progresso salvo neste aparelho?')) return;
-      save.best = {}; persist(); closeSheet(); loadLevel(0); toast('Progresso apagado');
+      if (!confirm(T.confirmReset)) return;
+      save.best = {}; persist(); closeSheet(); loadLevel(0); toast(T.toastReset);
     },
   };
 
@@ -532,23 +581,40 @@
     const m = Object.entries(MODES).map(([k, v]) =>
       `<button data-act="mode:${k}" class="${k === mode ? 'on' : ''}">${v.name}<small>${v.desc}</small></button>`).join('');
     openSheet(`
-      <h2>Menu</h2>
-      <h3>Dificuldade</h3>
+      <h2>${T.menu}</h2>
+      <h3>${T.difficulty}</h3>
       <div class="seg seg4">${TIERS.map((t, k) => {
         let n = 0; for (let i = t.from; i < t.from + t.count; i++) if (save.best[i]) n++;
-        return `<button data-act="diff:${k}" class="${k === tierOf(levelIdx) ? 'on' : ''}">${t.name}<small>${LEVELS[t.from][1]}–${LEVELS[t.from + t.count - 1][1]} mov · ${n}/${t.count}</small></button>`;
+        return `<button data-act="diff:${k}" class="${k === tierOf(levelIdx) ? 'on' : ''}">${t.name}<small>${LEVELS[t.from][1]}–${LEVELS[t.from + t.count - 1][1]} ${T.movShort} · ${n}/${t.count}</small></button>`;
       }).join('')}</div>
-      <h3>Modo de jogo</h3>
+      <h3>${T.gameMode}</h3>
       <div class="seg">${m}</div>
       <div class="list-btns">
-        <button class="btn" data-act="levels">▦ Fases <span class="note">· ${solvedCount()}/${NL} resolvidos</span></button>
-        <button class="btn" data-act="home">⌂ Tela inicial</button>
-        <button class="btn" data-act="help">? Como jogar</button>
-        <button class="btn" data-act="about">i Sobre</button>
-        <button class="btn" data-act="haptics">${save.haptics ? '✓' : '○'} Vibração ao mover</button>
-        <button class="btn" data-act="reset">↺ Apagar progresso</button>
+        <button class="btn" data-act="levels">▦ ${T.levels} <span class="note">· ${T.solvedOf(solvedCount(), NL)}</span></button>
+        <button class="btn" data-act="home">⌂ ${T.homeScreen}</button>
+        <button class="btn" data-act="help">? ${T.howTo}</button>
+        <button class="btn" data-act="about">i ${T.about}</button>
+        <button class="btn" data-act="lang">◍ ${T.language} <span class="note">· ${T.langName}</span></button>
+        <button class="btn" data-act="haptics">${save.haptics ? '✓' : '○'} ${T.haptics}</button>
+        <button class="btn" data-act="reset">↺ ${T.resetProgress}</button>
       </div>
-      <div class="btn-row"><button class="btn primary" data-act="close">Voltar ao jogo</button></div>`);
+      <div class="btn-row"><button class="btn primary" data-act="close">${T.backToGame}</button></div>`);
+  }
+
+  function openLang() {
+    openSheet(`
+      <h2>${T.language}</h2>
+      <div class="list-btns">${I.LANGS.map((l) =>
+        `<button class="btn${l === I.lang ? ' primary' : ''}" data-act="setlang:${l}">${l === I.lang ? '✓ ' : ''}${I.name(l)}</button>`).join('')}</div>
+      <div class="btn-row"><button class="btn" data-act="close">${T.close}</button></div>`);
+  }
+
+  function setLang(l) {
+    save.lang = l;
+    persist();
+    applyLang();
+    updateTip();
+    renderHome();
   }
 
   function openLevels(tier) {
@@ -559,59 +625,33 @@
       return `<button data-act="tier:${t}" class="${t === tier ? 'on' : ''}">${tr.name}<span>${n}/${tr.count}</span></button>`;
     }).join('');
     let cells = '';
-    const T = TIERS[tier];
-    for (let i = T.from; i < T.from + T.count; i++) {
+    const TR = TIERS[tier];
+    for (let i = TR.from; i < TR.from + TR.count; i++) {
       const b = save.best[i];
       const cls = [b ? 'solved' : '', b && b.moves <= LEVELS[i][1] ? 'perfect' : '', i === levelIdx ? 'current' : ''].join(' ');
-      cells += `<button data-act="goto:${i}" class="${cls}" aria-label="${levelName(i)}, ${LEVELS[i][1]} movimentos">${i - T.from + 1}${b && b.grade ? `<em>${b.grade}</em>` : ''}</button>`;
+      cells += `<button data-act="goto:${i}" class="${cls}" aria-label="${T.levelAria(levelName(i), LEVELS[i][1])}">${i - TR.from + 1}${b && b.grade ? `<em>${b.grade}</em>` : ''}</button>`;
     }
     openSheet(`
-      <h2>Fases</h2>
+      <h2>${T.levels}</h2>
       <div class="tier-tabs">${tabs}</div>
-      <p class="note">${T.name}: soluções de ${LEVELS[T.from][1]} a ${LEVELS[T.from + T.count - 1][1]} movimentos.</p>
+      <p class="note">${T.tierRange(TR.name, LEVELS[TR.from][1], LEVELS[TR.from + TR.count - 1][1])}</p>
       <div class="levels">${cells}</div>
-      <p class="note">Verde: resolvido · verde forte: no mínimo de movimentos · letra: melhor nota no Desafio.</p>`);
+      <p class="note">${T.levelsLegend}</p>`);
   }
 
   function openHelp(first) {
-    openSheet(`
-      <h2>Como jogar</h2>
-      <p><b>Objetivo:</b> deslize as peças, sem tirá-las do tabuleiro, até levar o <b style="color:var(--big)">bloco laranja</b> à abertura no centro da borda de baixo.</p>
-      <p>Arraste uma peça com o dedo. Ela só anda por casas vazias, e pode virar a esquina no mesmo gesto. Mover a mesma peça várias vezes seguidas conta como <b>um</b> movimento.</p>
-      <h3>Modos</h3>
-      <ul>
-        <li><b>Livre</b>: sem limite de tempo. O visor mostra movimentos e tempo.</li>
-        <li><b>Aprender</b> (segure ◀): mostra o próximo passo da solução ótima. ▶ executa o passo e ◀ volta um.</li>
-        <li><b>Desafio</b> (segure ▶): resolva antes de o tempo acabar. A nota vai de <b>S</b> (super) até <b>E</b> (falhou).</li>
-      </ul>
-      <h3>Teclas</h3>
-      <ul>
-        <li><b>◀ / ▶</b>: fase anterior ou próxima. No modo Aprender, voltam ou avançam um passo.</li>
-        <li><b>↶</b>: desfaz o último movimento. Segure para reiniciar a fase.</li>
-        <li><b>●</b>: menu. Escolha ali a dificuldade. Toque no visor para abrir a lista de fases.</li>
-        <li><b>◀ + ▶</b> segurados juntos: liga ou desliga o som.</li>
-      </ul>
-      <h3>Dificuldades</h3>
-      <ul>${TIERS.map((t) => `<li><b>${t.name}</b>: ${t.count} fases, soluções de ${LEVELS[t.from][1]} a ${LEVELS[t.from + t.count - 1][1]} movimentos.</li>`).join('')}</ul>
-      <p class="note">Não há fases repetidas nem espelhadas, e nenhuma fase é um trecho da solução de outra. O cronômetro começa no primeiro movimento.</p>
-      <div class="btn-row"><button class="btn primary" data-act="close">${first ? 'Começar' : 'Entendi'}</button></div>`,
+    const tiers = TIERS.map((t) => ({ name: t.name, count: t.count, lo: LEVELS[t.from][1], hi: LEVELS[t.from + t.count - 1][1] }));
+    openSheet(`${T.helpHtml(tiers)}
+      <div class="btn-row"><button class="btn primary" data-act="close">${first ? T.start : T.gotIt}</button></div>`,
     first ? () => { save.seenHelp = true; persist(); } : null);
   }
 
   function openAbout() {
-    openSheet(`
-      <h2>Sobre o Desliza</h2>
-      <p><b>Desliza</b> é um quebra-cabeça de blocos deslizantes para jogar no celular. A regra cabe numa frase: mova as peças pelo tabuleiro, sem tirá-las do lugar, até o bloco laranja escapar pela abertura de baixo.</p>
-      <h3>Inspiração</h3>
-      <p>O jogo se inspira em quebra-cabeças deslizantes consagrados, como o <b>Klotski</b> e o chinês <b>Huarong Dao</b>, que usam essa mesma ideia de um bloco grande preso entre peças menores, e nos consoles de bolso que levaram esse desafio para a palma da mão.</p>
-      <p>Nome, visual e fases são originais. O Desliza não tem ligação com nenhum fabricante desses jogos.</p>
-      <h3>As fases</h3>
-      <p>As ${NL} fases foram selecionadas por um programa que examinou todas as 363.480 disposições possíveis das peças e calculou a solução mínima de cada uma. Por isso o número de movimentos mostrado em cada fase é comprovadamente o menor possível. Nenhuma fase repete, espelha ou faz parte da solução de outra.</p>
-      <h3>O projeto</h3>
-      <p>Desliza é um projeto pessoal, desenvolvido com apoio de IA (Claude, da Anthropic). Funciona direto no navegador e pode ser instalado na tela inicial para jogar offline.</p>
-      <p class="note">Seu progresso fica salvo apenas neste aparelho. O jogo não coleta dados pessoais, não usa cookies de rastreamento e não exibe anúncios.</p>
-      <p><span class="about-badge">v1.0</span><span class="about-badge">${NL} fases</span><span class="about-badge">HTML · CSS · JavaScript</span></p>
-      <div class="btn-row"><button class="btn primary" data-act="close">Fechar</button></div>`);
+    openSheet(`${T.aboutHtml(NL, I.num(363480))}
+      <h3>${T.contactTitle}</h3>
+      <p>${T.contactText}</p>
+      <div class="btn-row"><button class="btn" data-act="close">${T.close}</button><button class="btn primary" data-act="mail">${T.contactBtn}</button></div>
+      <p class="note about-foot">v1.0 · <a class="about-link" href="https://github.com/aslopes-cmyk/desliza" target="_blank" rel="noopener">${T.codeLink} ↗</a></p>`);
   }
 
   // ---------------- tela inicial ----------------
@@ -623,15 +663,22 @@
     $('#hDiff').innerHTML = TIERS.map((t, k) => {
       let n = 0;
       for (let i = t.from; i < t.from + t.count; i++) if (save.best[i]) n++;
-      return `<button data-tier="${k}" class="${k === cur ? 'on' : ''}"><b>${t.name}</b><small>${LEVELS[t.from][1]}–${LEVELS[t.from + t.count - 1][1]} mov</small><span class="bar"><span style="width:${(100 * n) / t.count}%"></span></span><small>${n}/${t.count}</small></button>`;
+      return `<button data-tier="${k}" class="${k === cur ? 'on' : ''}"><b>${t.name}</b><small>${LEVELS[t.from][1]}–${LEVELS[t.from + t.count - 1][1]} ${T.movShort}</small><span class="bar"><span style="width:${(100 * n) / t.count}%"></span></span><small>${n}/${t.count}</small></button>`;
     }).join('');
     $('#hMode').innerHTML = Object.entries(MODES).map(([k, v]) =>
       `<button data-mode="${k}" class="${k === mode ? 'on' : ''}">${v.name}<small>${v.desc}</small></button>`).join('');
     const started = status === 'playing' && moves > 0;
-    $('#hPlayT').textContent = started ? 'CONTINUAR' : 'JOGAR';
+    $('#hPlayT').textContent = started ? T.continue : T.play;
     $('#hPlayS').textContent = `${levelName(levelIdx)} · ${MODES[mode].name}`;
     $('#hSound').classList.toggle('off', !save.sound);
+    $('#hLang').innerHTML = I.LANGS.map((l) => `<button data-lang="${l}" class="${l === I.lang ? 'on' : ''}" aria-label="${I.name(l)}">${l.toUpperCase()}</button>`).join('');
   }
+  $('#hLang').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-lang]');
+    if (!b) return;
+    Sfx.unlock(); Sfx.key();
+    setLang(b.dataset.lang);
+  });
 
   function showHome() {
     if (status === 'playing' && !pausedAt) pausedAt = performance.now();
@@ -736,25 +783,25 @@
   function showResult({ won, grade, opt, record }) {
     if (status !== 'won' && status !== 'failed') return;
     const b = save.best[levelIdx];
-    const gradeHtml = grade ? `<div class="grade ${grade[0]}">${grade[0]}</div><div class="note">${grade[2]}</div>` : '';
-    const title = won ? (mode === 'learn' ? 'Solução concluída' : moves <= opt ? 'Perfeito!' : 'Resolvido!') : 'Tempo esgotado';
-    const extra = !won ? 'Use o modo Aprender para ver a solução passo a passo.'
-      : assisted ? 'Resolvido com ajuda: não conta como recorde.'
-      : moves <= opt ? 'Você usou o número mínimo de movimentos.'
-      : `O mínimo é ${opt} movimentos.${record ? ' Novo recorde pessoal!' : ''}`;
+    const gradeHtml = grade ? `<div class="grade ${grade[0]}">${grade[0]}</div><div class="note">${T.grades[grade[0]]}</div>` : '';
+    const title = won ? (mode === 'learn' ? T.winLearn : moves <= opt ? T.perfect : T.solved) : T.timeUp;
+    const extra = !won ? T.resFail
+      : assisted ? T.resAssisted
+      : moves <= opt ? T.resPerfect
+      : T.resMin(opt, record);
     openSheet(`
       <div class="result">
         <h2>${title}</h2>
         ${gradeHtml}
         <div class="stats">
-          <div><b>${moves}</b><span>movimentos</span></div>
-          <div><b>${opt}</b><span>mínimo</span></div>
-          <div><b>${fmt(won ? tElapsed : timeLimit)}</b><span>${mode === 'challenge' ? 'de ' + fmt(timeLimit) : 'tempo'}</span></div>
+          <div><b>${moves}</b><span>${T.statMoves}</span></div>
+          <div><b>${opt}</b><span>${T.statMin}</span></div>
+          <div><b>${fmt(won ? tElapsed : timeLimit)}</b><span>${mode === 'challenge' ? T.statOf(fmt(timeLimit)) : T.statTime}</span></div>
         </div>
-        <p class="note">${extra}${b && !assisted && won ? `<br>Melhor: ${b.moves} mov. · ${fmt(b.time)}` : ''}</p>
+        <p class="note">${extra}${b && !assisted && won ? '<br>' + T.best(b.moves, fmt(b.time)) : ''}</p>
         <div class="btn-row">
-          ${won ? '<button class="btn" data-act="retry">↺ Repetir</button><button class="btn primary" data-act="next">Próximo ▶</button>'
-            : '<button class="btn" data-act="learn">Aprender</button><button class="btn primary" data-act="retry">Tentar de novo</button>'}
+          ${won ? `<button class="btn" data-act="retry">${T.retry}</button><button class="btn primary" data-act="next">${T.next}</button>`
+            : `<button class="btn" data-act="learn">${T.learnBtn}</button><button class="btn primary" data-act="retry">${T.tryAgain}</button>`}
         </div>
       </div>`);
   }
@@ -786,9 +833,12 @@
       lcd.text('DESLIZA', 18, 10, '#ffffffaa');
     } else {
       const blinkOn = Math.floor(now / 350) % 2 === 0;
-      lcd.board(pieces, 1, 1, {
-        blink: hint && blinkOn ? hint.p : null,
-        ghost: hint ? { r: hint.r, c: hint.c, w: hint.p.w, h: hint.p.h } : null,
+      // miniatura fixa: mostra a posição inicial da fase como referência (como no aparelho)
+      if (!startPieces || startPieces.idx !== levelIdx) {
+        startPieces = parse(LEVELS[levelIdx][0]);
+        startPieces.idx = levelIdx;
+      }
+      lcd.board(startPieces, 1, 1, {
         exitColor: status === 'won' ? (blinkOn ? '#7dffa8' : '#7dffa844') : undefined,
       });
       const X = 21;
@@ -804,7 +854,7 @@
           l3 = mv + ' ' + fmt(Math.ceil(left));
           if (status === 'playing' && left <= 5 && !blinkOn) col = C.warn;
         } else if (mode === 'learn') {
-          l3 = hint ? 'FALTAM ' + hint.remaining : analyzer && analyzer.done ? mv : 'CALCULA';
+          l3 = hint ? T.lcdLeft + ' ' + hint.remaining : analyzer && analyzer.done ? mv : T.lcdSolving;
         } else {
           l3 = mv + ' ' + fmt(elapsed());
         }

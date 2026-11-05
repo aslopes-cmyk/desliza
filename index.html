@@ -62,26 +62,27 @@
 <body>
   <main class="device" id="device">
     <header class="top">
-      <div class="screen" id="screen" title="Toque para ver os níveis">
-        <canvas id="lcd" aria-label="Visor"></canvas>
+      <div class="screen" id="screen" title="Toque para ver as fases" data-i18n-title="screenTitle">
+        <canvas id="lcd" aria-label="Visor" data-i18n-aria="lcdAria"></canvas>
       </div>
       <div class="keys">
-        <button class="key" id="kPrev" aria-label="Fase anterior. Segure para o modo Aprender">
-          <span class="cap">◀</span><span class="lbl">ANT<small>segure: aprender</small></span>
+        <button class="key" id="kPrev" aria-label="Fase anterior. Segure para o modo Aprender" data-i18n-aria="kPrevAria">
+          <span class="cap">◀</span><span class="lbl"><span data-i18n="kPrev">ANT</span><small data-i18n="kPrevHold">segure: aprender</small></span>
         </button>
-        <button class="key" id="kNext" aria-label="Próxima fase. Segure para o modo Desafio">
-          <span class="cap">▶</span><span class="lbl">PRÓX<small>segure: desafio</small></span>
+        <button class="key" id="kNext" aria-label="Próxima fase. Segure para o modo Desafio" data-i18n-aria="kNextAria">
+          <span class="cap">▶</span><span class="lbl"><span data-i18n="kNext">PRÓX</span><small data-i18n="kNextHold">segure: desafio</small></span>
         </button>
-        <button class="key" id="kUndo" aria-label="Desfazer. Segure para reiniciar">
-          <span class="cap">↶</span><span class="lbl">VOLTA<small>segure: reiniciar</small></span>
+        <button class="key" id="kUndo" aria-label="Desfazer. Segure para reiniciar" data-i18n-aria="kUndoAria">
+          <span class="cap">↶</span><span class="lbl"><span data-i18n="kUndo">VOLTA</span><small data-i18n="kUndoHold">segure: reiniciar</small></span>
         </button>
-        <button class="key key-main" id="kMenu" aria-label="Menu">
-          <span class="cap">●</span><span class="lbl">MENU<small>&nbsp;</small></span>
+        <button class="key key-main" id="kMenu" aria-label="Menu" data-i18n-aria="menu">
+          <span class="cap">●</span><span class="lbl"><span data-i18n="kMenu">MENU</span><small>&nbsp;</small></span>
         </button>
       </div>
     </header>
 
     <section class="board-area" id="boardArea">
+      <div class="status"><span class="tip" id="tip" data-i18n="tipStart">Leve o bloco laranja até a saída</span></div>
       <div class="frame" id="frame">
         <div class="board" id="board"></div>
         <div class="exit" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -94,7 +95,7 @@
         <h1 class="title" aria-label="Desliza">
           <span class="tl-d" style="--d:0">D</span><span class="tl-v" style="--d:1">E</span><span class="tl-d" style="--d:2">S</span><span class="tl-v" style="--d:3">L</span><span class="tl-d" style="--d:4">I</span><span class="tl-v" style="--d:5">Z</span><span class="tl-b" style="--d:6">A</span>
         </h1>
-        <p class="subtitle">o quebra-cabeça de blocos deslizantes</p>
+        <p class="subtitle" data-i18n="subtitle">o quebra-cabeça de blocos deslizantes</p>
       </div>
 
       <div class="demo-wrap" aria-hidden="true">
@@ -107,26 +108,25 @@
           <span class="play-s" id="hPlayS">Fácil · fase 1</span>
         </button>
 
-        <div class="h-label">Dificuldade</div>
+        <div class="h-label" data-i18n="difficulty">Dificuldade</div>
         <div class="h-diff" id="hDiff"></div>
 
-        <div class="h-label">Modo</div>
+        <div class="h-label" data-i18n="mode">Modo</div>
         <div class="seg h-mode" id="hMode"></div>
 
         <div class="h-links">
-          <button data-home="levels"><b>▦</b>Fases</button>
-          <button data-home="help"><b>?</b>Como jogar</button>
-          <button data-home="about"><b>i</b>Sobre</button>
-          <button data-home="sound" id="hSound"><b>♪</b>Som</button>
+          <button data-home="levels"><b>▦</b><span data-i18n="levels">Fases</span></button>
+          <button data-home="help"><b>?</b><span data-i18n="howTo">Como jogar</span></button>
+          <button data-home="about"><b>i</b><span data-i18n="about">Sobre</span></button>
+          <button data-home="sound" id="hSound"><b>♪</b><span data-i18n="sound">Som</span></button>
         </div>
       </div>
-      <footer class="h-foot">v1.0 · projeto pessoal</footer>
+      <footer class="h-foot"><span data-i18n="homeFoot">v1.0 · projeto pessoal</span><span class="h-lang" id="hLang"></span></footer>
     </section>
 
     <footer class="brand">
       <span class="logo">DESLIZA</span>
-      <span class="tip" id="tip">Leve o bloco laranja até a saída</span>
-      <button class="mute" id="mute" aria-label="Som">♪</button>
+      <button class="mute" id="mute" aria-label="Som" data-i18n-aria="sound">♪</button>
     </footer>
   </main>
 
@@ -141,6 +141,7 @@
 
   <script src="js/solver.js"></script>
   <script src="js/levels.js"></script>
+  <script src="js/i18n.js"></script>
   <script src="js/display.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/game.js"></script>
