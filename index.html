@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#14161b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Desliza</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main class="device" id="device">
+    <header class="top">
+      <div class="screen" id="screen" title="Toque para ver os níveis">
+        <canvas id="lcd" aria-label="Visor"></canvas>
+      </div>
+      <div class="keys">
+        <button class="key" id="kPrev" aria-label="Fase anterior. Segure para o modo Aprender">
+          <span class="cap">◀</span><span class="lbl">ANT<small>segure: aprender</small></span>
+        </button>
+        <button class="key" id="kNext" aria-label="Próxima fase. Segure para o modo Desafio">
+          <span class="cap">▶</span><span class="lbl">PRÓX<small>segure: desafio</small></span>
+        </button>
+        <button class="key" id="kUndo" aria-label="Desfazer. Segure para reiniciar">
+          <span class="cap">↶</span><span class="lbl">VOLTA<small>segure: reiniciar</small></span>
+        </button>
+        <button class="key key-main" id="kMenu" aria-label="Menu">
+          <span class="cap">●</span><span class="lbl">MENU<small>&nbsp;</small></span>
+        </button>
+      </div>
+    </header>
+
+    <section class="board-area" id="boardArea">
+      <div class="frame" id="frame">
+        <div class="board" id="board"></div>
+        <div class="exit" aria-hidden="true"><i></i><i></i><i></i></div>
+      </div>
+    </section>
+
+    <!-- tela inicial -->
+    <section class="home" id="home" aria-label="Tela inicial">
+      <div class="home-hero">
+        <h1 class="title" aria-label="Desliza">
+          <span class="tl-d" style="--d:0">D</span><span class="tl-v" style="--d:1">E</span><span class="tl-d" style="--d:2">S</span><span class="tl-v" style="--d:3">L</span><span class="tl-d" style="--d:4">I</span><span class="tl-v" style="--d:5">Z</span><span class="tl-b" style="--d:6">A</span>
+        </h1>
+        <p class="subtitle">o quebra-cabeça de blocos deslizantes</p>
+      </div>
+
+      <div class="demo-wrap" aria-hidden="true">
+        <div class="demo" id="demo"><div class="demo-exit"></div></div>
+      </div>
+
+      <div class="home-menu">
+        <button class="play" id="hPlay">
+          <span class="play-t" id="hPlayT">JOGAR</span>
+          <span class="play-s" id="hPlayS">Fácil · fase 1</span>
+        </button>
+
+        <div class="h-label">Dificuldade</div>
+        <div class="h-diff" id="hDiff"></div>
+
+        <div class="h-label">Modo</div>
+        <div class="seg h-mode" id="hMode"></div>
+
+        <div class="h-links">
+          <button data-home="levels"><b>▦</b>Fases</button>
+          <button data-home="help"><b>?</b>Como jogar</button>
+          <button data-home="about"><b>i</b>Sobre</button>
+          <button data-home="sound" id="hSound"><b>♪</b>Som</button>
+        </div>
+      </div>
+      <footer class="h-foot">v1.0 · projeto pessoal</footer>
+    </section>
+
+    <footer class="brand">
+      <span class="logo">DESLIZA</span>
+      <span class="tip" id="tip">Leve o bloco laranja até a saída</span>
+      <button class="mute" id="mute" aria-label="Som">♪</button>
+    </footer>
+  </main>
+
+  <!-- folha inferior genérica (menu, níveis, ajuda, resultado) -->
+  <div class="sheet-backdrop" id="backdrop" hidden></div>
+  <section class="sheet" id="sheet" role="dialog" aria-modal="true" hidden>
+    <div class="sheet-grip"></div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </section>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="js/solver.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/display.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

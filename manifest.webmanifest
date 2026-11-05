@@ -1,0 +1,11 @@
+{
+  "name": "Desliza",
+  "short_name": "Desliza",
+  "description": "Quebra-cabeça de blocos deslizantes com 500 níveis.",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#14161b",
+  "theme_color": "#14161b",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
